@@ -7,7 +7,7 @@ Oyunumuzu tasarlarken Javascript dilini ve Canvas yapısı kullanılmıştır. H
 # Oyun Hakkında 
 Oyunumuz klavye tuşlarından yön tüşları ve W,A,S ve D ile hareket ederek uzaylılara Space tuşu ile ateş ediyoruz. Aynı zamanda Esc ile oyunumuzu durdurup, Enter tuşu ile Game Over durumunda oyuna yeniden başlatabilirsiniz.Level ilerledikçe ise sol üstte sayaçtan da skorunuzu görebilirsiniz.
 
-# Oyunumuzun Linki
+# Oyun Linki
 https://talha-yuksel-57.github.io/Talha-Yuksel-57-Web-Tabanli-Oyun-Tasarlama/
 
 # Oyun Hakkındaki YouTube Video Linki
