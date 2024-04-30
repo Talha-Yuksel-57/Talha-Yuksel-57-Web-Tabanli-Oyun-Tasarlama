@@ -13,7 +13,7 @@ https://talha-yuksel-57.github.io/Talha-Yuksel-57-Web-Tabanli-Oyun-Tasarlama/
 # Oyun Hakkındaki YouTube Video Linki
 https://youtu.be/Jq5yUKq5mcA?si=Yocv8M7jT6s1WSyV
 
-#Kullanılan Kaynaklar
+# Kullanılan Kaynaklar
 Programlama aşamalarında aşağıdaki sitelerden yardım alınmıştır.
 https://www.w3schools.com/
 https://chat.openai.com/
