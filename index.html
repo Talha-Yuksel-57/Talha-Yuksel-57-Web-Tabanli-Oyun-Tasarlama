@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UZAYLI AVCISI OYUNU</title>
+
+    <style>
+        #tahta {
+            display: block;
+            margin: 0 auto;
+            background-image: url(images/arkaplan.png);
+            background-color: rgb(19, 24, 142);
+            border: 2px solid rgb(255, 255, 255);
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: black;
+            color: white;
+        }
+
+        #oyun-kutusu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #tahta {
+            width: 100%;
+            height: 100%;
+        }
+
+        #talimatlar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #000000;
+        }
+
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            color: white;
+            font-weight: bold;
+            display: none;
+        }
+
+        #yeniden-baslat {
+            position: absolute;
+            top: calc(50% + 100px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            padding: 10px 20px;
+            background-color: #000000;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            display: none;
+        }
+    </style>
+
+</head>
+
+<body>
+    <h1>UZAYLI AVCISI</h1>
+    <h2>HOŞ GELDİN GALAKSİNİN KORUYUCUSU</h2>
+    <hr>
+    <p id="talimatlar">
+        <font color="#ffffff">
+            Oyunumuzu yön tuşları, W A S D, Space ve Enter tuşları ile oynayabilirsin.<br>
+            Yukarı ve aşağıya hareket etmek için == W/S ve YUKARI/AŞAĞI YÖN TUŞLARI<br>
+            Sağ ve sola hareket etmek için == A/D ve SAĞ/SOL YÖN TUŞLARI<br>
+            Ateş etmek için (Basılı da tutabilirsin :D)== SPACE<br>
+            Oyunu durdurmak için == ESC<br>
+            Game Over durumunda oyunu yeniden başlatmak için == ENTER<br>
+        </font>
+    </p>
+    <div id="oyun-kutusu">
+        <canvas id="tahta"></canvas>
+    </div>
+    <div id="game-over">GAME OVER</div>
+    <button id="yeniden-baslat" onclick="yenidenBaslat()">Yeniden Başlat</button>
+
+    <!-- Ses dosyaları -->
+    <audio id="ates-sesi" src="sounds/ateş.mp3" volume="0.001"></audio>
+    <audio id="gameover-sesi" src="sounds/gameover.mp3" volume="0.2"></audio>
+
+    <script>
+        
+        let tasBoyutu = 35; // Oyun taşlarının boyutu
+        let satirSayisi; // Satır sayısı
+        let sutunSayisi; // Sütun sayısı
+
+        let tahta; // Oyun tahtası
+        let tahtaGenislik; // Tahta genişliği
+        let tahtaYukseklik; // Tahta yüksekliği
+        let baglam; // Tahta bağlamı
+
+        let gemiGenislik = tasBoyutu * 4; // Gemi genişliği
+        let gemiYukseklik = tasBoyutu * 3; // Gemi yüksekliği
+        let gemiX; // Gemi X konumu
+        let gemiY; // Gemi Y konumu
+
+        let gemi; // Gemi nesnesi
+        let gemiResmi; // Gemi resmi
+        let gemiHiziX = tasBoyutu; // Geminin X ekseninde hızı
+        let gemiHiziY = tasBoyutu; // Geminin Y ekseninde hızı
+
+        let gemiHareketi = ""; // Gemi hareket yönü
+
+        let uzayliDizisi = []; // Uzaylı dizisi
+        let uzayliGenislik = tasBoyutu * 2; // Uzaylı genişliği
+        let uzayliYukseklik = tasBoyutu; // Uzaylı yüksekliği
+        let uzayliX; // Uzaylı X konumu
+        let uzayliY; // Uzaylı Y konumu
+        let uzayliResmi; // Uzaylı resmi
+
+        let uzayliSatir = 2; // Uzaylı satır sayısı
+        let uzayliSutun = 3; // Uzaylı sütun sayısı
+        let uzayliSayisi = 0; // Toplam uzaylı sayısı
+        let uzayliHiziX = 1; // Uzaylıların X ekseninde hızı
+
+        let mermiDizisi = []; // Mermi dizisi
+        let mermiHiziY = 6; // Mermi hızı (Y ekseninde)
+        let mermiHizi = 250; // Mermi hızı (milisaniye cinsinden)
+
+        let puan = 0; // Oyuncu puanı
+        let oyunBitti = false; // Oyun sona erdi mi?
+        let duraklatildi = false; // Oyun duraklatıldı mı?
+        
+        let hareketZamani; // Gemi hareketi için setInterval
+
+        window.onload = function () {
+            oyunuBaslat();
+            window.addEventListener('resize', oyunuYenidenBoyutlandir);
+            document.addEventListener("keydown", tuslariIsle);
+            document.addEventListener("keyup", tusSerbestBirakildi);
+            requestAnimationFrame(guncelle);
+            hareketZamani = setInterval(gemiyiSeriHareketEttir, 50);
+        }
+
+        function oyunuBaslat() {
+            tahta = document.getElementById("tahta");
+            baglam = tahta.getContext("2d");
+            oyunuYenidenBoyutlandir();
+            gemiResmi = new Image();
+            gemiResmi.src = "images/gemi.png";
+            gemiResmi.onload = function () {
+                baglam.drawImage(gemiResmi, gemi.x, gemi.y, gemi.genislik, gemi.yukseklik);
+            }
+            uzayliResmi = new Image();
+            uzayliResmi.src = "images/uzayli.png";
+            uzaylilariOlustur();
+        }
+
+        function oyunuYenidenBoyutlandir() {
+            tahtaGenislik = window.innerWidth;
+            tahtaYukseklik = window.innerHeight;
+            tahta.width = tahtaGenislik;
+            tahta.height = tahtaYukseklik;
+            sutunSayisi = Math.floor(tahtaGenislik / tasBoyutu);
+            satirSayisi = Math.floor(tahtaYukseklik / tasBoyutu);
+            gemiX = (sutunSayisi * tasBoyutu) / 2 - tasBoyutu;
+            gemiY = satirSayisi * tasBoyutu - tasBoyutu * 3;
+            gemi = {
+                x: gemiX,
+                y: gemiY,
+                genislik: gemiGenislik,
+                yukseklik: gemiYukseklik
+            };
+            uzayliX = tasBoyutu;
+            uzayliY = tasBoyutu * 2;
+            uzayliGenislik = tasBoyutu * 2;
+            uzayliYukseklik = tasBoyutu;
+        }
+
+        function guncelle() {
+            requestAnimationFrame(guncelle);
+            if (duraklatildi || oyunBitti) {
+                return;
+            }
+            baglam.clearRect(0, 0, tahta.width, tahta.height);
+            baglam.drawImage(gemiResmi, gemi.x, gemi.y, gemi.genislik, gemi.yukseklik);
+            for (let i = 0; i < uzayliDizisi.length; i++) {
+                let uzayli = uzayliDizisi[i];
+                if (uzayli.canli) {
+                    uzayli.x += uzayliHiziX;
+                    switch (true) {
+                        case (uzayli.x + uzayli.genislik >= tahta.width || uzayli.x <= 0):
+                            uzayliHiziX *= -1;
+                            uzayli.x += uzayliHiziX * 2;
+                            for (let j = 0; j < uzayliDizisi.length; j++) {
+                                uzayliDizisi[j].y += uzayliYukseklik;
+                            }
+                            break;
+                        case (uzayli.y >= gemi.y):
+                            oyunBitti = true;
+                            document.getElementById("game-over").style.display = "block";
+                            document.getElementById("yeniden-baslat").style.display = "block";
+                            document.getElementById("gameover-sesi").play(); // Game Over sesi
+                            break;
+                        default:
+                            break;
+                    }
+                    baglam.drawImage(uzayliResmi, uzayli.x, uzayli.y, uzayli.genislik, uzayli.yukseklik);
+                }
+            }
+            for (let i = 0; i < mermiDizisi.length; i++) {
+                let mermi = mermiDizisi[i];
+                mermi.y -= mermiHiziY;
+                baglam.fillStyle = "white";
+                baglam.fillRect(mermi.x, mermi.y, mermi.genislik, mermi.yukseklik);
+                for (let j = 0; j < uzayliDizisi.length; j++) {
+                    let uzayli = uzayliDizisi[j];
+                    if (!mermi.kullanildi && uzayli.canli && carpismaTespit(mermi, uzayli)) {
+                        mermi.kullanildi = true;
+                        uzayli.canli = false;
+                        uzayliSayisi--;
+                        puan += 100;
+                    }
+                }
+            }
+            while (mermiDizisi.length > 0 && (mermiDizisi[0].kullanildi || mermiDizisi[0].y < 0)) {
+                mermiDizisi.shift();
+            }
+            if (uzayliSayisi == 0) {
+                puan += uzayliSutun * uzayliSatir * 100;
+                uzayliSutun = Math.min(uzayliSutun + 1, sutunSayisi / 2 - 2);
+                uzayliSatir = Math.min(uzayliSatir + 1, satirSayisi - 4);
+                switch (true) {
+                    case uzayliHiziX > 0:
+                        uzayliHiziX += 0.1;
+                        break;
+                    case uzayliHiziX <= 0:
+                        uzayliHiziX -= 0.1;
+                        break;
+                    default:
+                        break;
+                }
+                uzayliDizisi = [];
+                mermiDizisi = [];
+                uzaylilariOlustur();
+            }
+            baglam.fillStyle = "white";
+            baglam.font = "45px courier";
+            baglam.fillText(puan, 10, 40);
+        }
+
+        function gemiyiSeriHareketEttir() {
+            if (gemiHareketi === "sol" && gemi.x - gemiHiziX >= 0) {
+                gemi.x -= gemiHiziX;
+            } else if (gemiHareketi === "sag" && gemi.x + gemiHiziX + gemi.genislik <= tahta.width) {
+                gemi.x += gemiHiziX;
+            } else if (gemiHareketi === "yukari" && gemi.y - gemiHiziY >= 0) {
+                gemi.y -= gemiHiziY;
+            } else if (gemiHareketi === "asagi" && gemi.y + gemiHiziY + gemi.yukseklik <= tahta.height) {
+                gemi.y += gemiHiziY;
+            } else {
+                return;
+            }
+        }
+
+        function uzaylilariOlustur() {
+            for (let c = 0; c < uzayliSutun; c++) {
+                for (let r = 0; r < uzayliSatir; r++) {
+                    let uzayli = {
+                        resim: uzayliResmi,
+                        x: uzayliX + c * uzayliGenislik,
+                        y: uzayliY + r * uzayliYukseklik,
+                        genislik: uzayliGenislik,
+                        yukseklik: uzayliYukseklik,
+                        canli: true
+                    }
+                    uzayliDizisi.push(uzayli);
+                }
+            }
+            uzayliSayisi = uzayliDizisi.length;
+        }
+
+        function atesEt(e) {
+            if (oyunBitti || duraklatildi) {
+                return;
+            }
+            if (e.code == "Space") {
+                let mermi = {
+                    x: gemi.x + gemiGenislik * 15 / 32,
+                    y: gemi.y,
+                    genislik: tasBoyutu / 8,
+                    yukseklik: tasBoyutu / 2,
+                    kullanildi: false
+                };
+                mermiDizisi.push(mermi);
+                document.getElementById("ates-sesi").currentTime = 0;
+                document.getElementById("ates-sesi").play(); // Ateş sesi
+            }
+        }
+
+        function carpismaTespit(a, b) {
+            return a.x < b.x + b.genislik &&
+                a.x + a.genislik > b.x &&
+                a.y < b.y + b.yukseklik &&
+                a.y + a.yukseklik > b.y;
+        }
+
+        function tuslariIsle(e) {
+            if (e.code === "ArrowLeft" || e.code === "KeyA") {
+                gemiHareketi = "sol";
+            } else if (e.code === "ArrowRight" || e.code === "KeyD") {
+                gemiHareketi = "sag";
+            } else if (e.code === "ArrowUp" || e.code === "KeyW") {
+                gemiHareketi = "yukari";
+            } else if (e.code === "ArrowDown" || e.code === "KeyS") {
+                gemiHareketi = "asagi";
+            } else if (e.code === "Escape") {
+                duraklatildi = !duraklatildi;
+                if (duraklatildi) {
+                    clearInterval(hareketZamani);
+                } else {
+                    hareketZamani = setInterval(gemiyiSeriHareketEttir, 50);
+                }
+            } else if (e.code === "Enter" && oyunBitti) {
+                yenidenBaslat();
+            }
+            atesEt(e);
+        }
+
+        function tusSerbestBirakildi(e) {
+            if (
+                e.code === "ArrowLeft" ||
+                e.code === "ArrowRight" ||
+                e.code === "KeyA" ||
+                e.code === "KeyD" ||
+                e.code === "ArrowUp" ||
+                e.code === "ArrowDown" ||
+                e.code === "KeyW" ||
+                e.code === "KeyS"
+            ) {
+                gemiHareketi = "";
+            }
+        }
+
+        function yenidenBaslat() {
+            document.location.reload();
+        }
+    </script>
+</body>
+
+</html>
